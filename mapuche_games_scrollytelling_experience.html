@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taller de Juegos Mapuches — eAD PUCV & Ritoque</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        terracotta: '#8c2d19',
+                        darkbg: '#121110',
+                        linen: '#e6d7c3',
+                        clay: '#d97736',
+                        charcoal: '#1a1918',
+                        goldaccent: '#c8923c'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'Georgia', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            background-color: #121110;
+            color: #e6d7c3;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            cursor: none; /* Custom interaction cursor */
+        }
+
+        /* Custom Interactive Cursor */
+        #custom-cursor {
+            pointer-events: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 28px;
+            height: 28px;
+            border: 1.5px solid #8c2d19;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: transform 0.1s ease-out, background-color 0.2s ease, border-color 0.2s ease;
+            z-index: 9999;
+            mix-blend-mode: difference;
+        }
+
+        #custom-cursor-dot {
+            pointer-events: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 6px;
+            height: 6px;
+            background-color: #e6d7c3;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10000;
+        }
+
+        body.hovering #custom-cursor {
+            transform: translate(-50%, -50%) scale(2.2);
+            background-color: rgba(140, 45, 25, 0.35);
+            border-color: #e6d7c3;
+        }
+
+        /* Vinyl Disk Rotation Canvas & Shadow */
+        .vinyl-disk {
+            transform-style: preserve-3d;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.85), 0 0 35px rgba(140, 45, 25, 0.25);
+            will-change: transform;
+        }
+
+        /* Glassmorphism Surface UI */
+        .glass-card {
+            background: rgba(26, 25, 24, 0.78);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(230, 215, 195, 0.12);
+        }
+
+        .glass-card:hover {
+            border-color: rgba(140, 45, 25, 0.5);
+        }
+
+        /* Hide Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #121110;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #8c2d19;
+            border-radius: 3px;
+        }
+
+        /* Ambient Sand Particle Canvas Background */
+        #sand-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.45;
+        }
+    </style>
+</head>
+<body class="relative min-h-screen select-none">
+
+    <!-- Custom Cursor -->
+    <div id="custom-cursor"></div>
+    <div id="custom-cursor-dot"></div>
+
+    <!-- Sand Particle Canvas -->
+    <canvas id="sand-canvas"></canvas>
+
+    <!-- HEADER / AUDIO CONTROLLER -->
+    <header class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-4 sm:px-8 py-4 glass-card border-b-0">
+        <div class="flex items-center space-x-3">
+            <span class="font-serif text-xl sm:text-2xl font-bold tracking-wider text-terracotta">eAD</span>
+            <div class="h-4 w-[1px] bg-linen/20"></div>
+            <span class="text-xs tracking-widest text-linen/70 uppercase">Taller Juegos Mapuches</span>
+        </div>
+
+        <!-- Interactive Web Audio Player -->
+        <div class="flex items-center space-x-3 sm:space-x-5">
+            <!-- Reactive Audio Visualizer Canvas -->
+            <canvas id="audio-wave-canvas" width="80" height="24" class="rounded opacity-80 hidden sm:block"></canvas>
+            
+            <button id="audio-toggle" class="interactive-hover flex items-center space-x-2 bg-terracotta/20 hover:bg-terracotta text-linen px-3 sm:px-4 py-2 rounded-full border border-terracotta/40 transition-all text-xs font-semibold uppercase tracking-wider">
+                <i class="fa-solid fa-play" id="audio-icon"></i>
+                <span id="audio-text">Sintetizar Audio</span>
+            </button>
+
+            <!-- Quick Editor Trigger -->
+            <button onclick="toggleTextEditor()" class="interactive-hover bg-linen/10 hover:bg-linen/20 text-linen p-2 rounded-full border border-linen/20 transition-all" title="Editar Textos del Taller">
+                <i class="fa-solid fa-pen-to-square text-sm"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN SCROLLYTELLING CONTAINER -->
+    <main class="relative z-10">
+
+        <!-- 3D ROTATING VINYL / REWE DISK (Fixed Background Element) -->
+        <div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-auto cursor-grab active:cursor-grabbing opacity-30 md:opacity-55 transition-opacity" id="vinyl-wrapper">
+            <div id="vinyl" class="vinyl-disk w-[300px] h-[300px] sm:w-[460px] sm:h-[460px] md:w-[560px] md:h-[560px] rounded-full border-8 border-charcoal flex items-center justify-center relative bg-black/50 overflow-hidden">
+                <!-- Concentric Groove Rings -->
+                <div class="absolute inset-0 rounded-full border border-linen/10 m-4"></div>
+                <div class="absolute inset-0 rounded-full border border-linen/10 m-12"></div>
+                <div class="absolute inset-0 rounded-full border border-linen/10 m-24"></div>
+                <div class="absolute inset-0 rounded-full border border-terracotta/20 m-36"></div>
+                
+                <!-- Mapuche Meli Witran Mapu Cross Axes (4 Cardinal Directions) -->
+                <div class="absolute w-full h-[1px] bg-terracotta/50"></div>
+                <div class="absolute h-full w-[1px] bg-terracotta/50"></div>
+
+                <!-- Central Disc Label -->
+                <div class="w-28 h-28 md:w-40 md:h-40 rounded-full bg-terracotta/90 border-4 border-linen/20 flex flex-col items-center justify-center text-center p-2 z-10 shadow-2xl">
+                    <i class="fa-solid fa-compact-disc text-2xl md:text-3xl text-linen/90 mb-1 animate-spin" style="animation-duration: 16s;"></i>
+                    <span class="text-[9px] md:text-[10px] font-mono tracking-widest text-linen uppercase font-bold">AÜKANTUN</span>
+                    <span class="text-[8px] text-linen/70">eAD PUCV • RITOQUE</span>
+                </div>
+            </div>
+            <p class="text-center text-[10px] text-linen/40 tracking-widest uppercase mt-3"><i class="fa-solid fa-hand-pointer mr-1"></i> Arrastra libremente para girar el disco</p>
+        </div>
+
+        <!-- CONTENT SECTIONS -->
+        <div class="relative z-10">
+
+            <!-- HERO / PORTADA -->
+            <section id="section-hero" class="min-h-screen flex flex-col justify-center px-6 sm:px-12 md:px-24 py-24 max-w-5xl mx-auto">
+                <div class="glass-card p-8 sm:p-14 rounded-2xl max-w-2xl border-l-4 border-l-terracotta relative">
+                    <button onclick="toggleTextEditor()" class="interactive-hover absolute top-4 right-4 text-xs font-mono text-terracotta bg-terracotta/10 hover:bg-terracotta/20 px-3 py-1 rounded border border-terracotta/30">
+                        <i class="fa-solid fa-pen mr-1"></i> Editar Textos
+                    </button>
+                    <span class="text-terracotta font-mono text-xs tracking-widest uppercase mb-2 block" id="disp-hero-subtitle">Escuela de Arquitectura y Diseño PUCV</span>
+                    <h1 class="font-serif text-4xl sm:text-6xl font-bold mb-6 text-linen leading-tight" id="disp-hero-title">Taller de Juegos Mapuches</h1>
+                    <p class="text-base sm:text-lg text-linen/80 font-light leading-relaxed mb-6" id="disp-hero-desc">
+                        Una vivencia inmersiva donde el diseño, la corporalidad y el territorio convergieron en la práctica de los juegos tradicionales mapuches (*Aükantun*). Un recorrido desde el aula hacia la vastedad de Ritoque.
+                    </p>
+                    <div class="flex flex-wrap gap-4 text-xs font-mono text-linen/60 pt-4 border-t border-linen/10">
+                        <span><i class="fa-solid fa-compass text-terracotta mr-1"></i> <span id="disp-tag-1">Ciudad Abierta</span></span>
+                        <span>•</span>
+                        <span><i class="fa-solid fa-wind text-terracotta mr-1"></i> <span id="disp-tag-2">Dunas de Ritoque</span></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECCIÓN 1: EL TALLER -->
+            <section id="section-taller" class="min-h-screen flex flex-col justify-center px-6 sm:px-12 md:px-24 py-24 max-w-5xl mx-auto">
+                <div class="glass-card p-8 sm:p-12 rounded-2xl border-r-4 border-r-terracotta relative">
+                    <button onclick="toggleTextEditor()" class="interactive-hover absolute top-4 right-4 text-xs font-mono text-terracotta bg-terracotta/10 hover:bg-terracotta/20 px-3 py-1 rounded border border-terracotta/30">
+                        <i class="fa-solid fa-pen mr-1"></i> Editar
+                    </button>
+                    <span class="text-terracotta font-mono text-xs tracking-widest uppercase mb-2 block">Capítulo 01 / Fundamento</span>
+                    <h2 class="font-serif text-3xl sm:text-5xl font-bold mb-6 text-linen" id="disp-taller-title">El Taller y el Gesto del Juego</h2>
+                    <p class="text-sm sm:text-base text-linen/80 leading-relaxed mb-4" id="disp-taller-body1">
+                        En la eAD observamos el juego no como un simple pasatiempo, sino como una estructura formal y ritual que construye espacio y vinculación humana. 
+                    </p>
+                    <p class="text-sm sm:text-base text-linen/80 leading-relaxed" id="disp-taller-body2">
+                        Estudiar las herramientas del Palin o las reglas del Linao nos permitió entender la física del esfuerzo, la flexibilidad de la madera y el cuerpo como el primer instrumento de diseño.
+                    </p>
+                </div>
+            </section>
+
+            <!-- SECCIÓN 2: COSMOVISIÓN Y JUEGOS (3D Cards) -->
+            <section id="section-juegos" class="min-h-screen flex flex-col justify-center px-6 sm:px-12 md:px-24 py-24 max-w-6xl mx-auto">
+                <!-- INTRODUCCIÓN GENERAL DE LA COSMOVISIÓN DEL JUEGO -->
+                <div class="glass-card p-8 sm:p-10 rounded-2xl mb-12 border-l-4 border-l-terracotta relative">
+                    <span class="text-terracotta font-mono text-xs tracking-widest uppercase block mb-2">Capítulo 02 / Cosmovisión</span>
+                    <h2 class="font-serif text-3xl sm:text-4xl font-bold text-linen mb-4">El Juego en la Cosmovisión Mapuche</h2>
+                    <p class="text-sm sm:text-base text-linen/90 leading-relaxed font-light" id="disp-cosmovision-text">
+                        En la cosmovisión mapuche, el juego no se reduce a una competencia donde alguien gana y alguien pierde. Es una instancia de encuentro entre personas y comunidades, y muchas veces tiene una dimensión ritual: se juega en el marco de ceremonias, reuniones y celebraciones, y sirve para fortalecer vínculos, resolver tensiones y compartir la vida en común. Jugar es una forma de relacionarse con los otros y con el territorio.
+                    </p>
+                </div>
+
+                <div class="mb-8 flex justify-between items-end">
+                    <div>
+                        <span class="text-terracotta font-mono text-xs tracking-widest uppercase block mb-1">Aükantun</span>
+                        <h3 class="font-serif text-2xl sm:text-3xl font-bold text-linen">Juegos Tradicionales</h3>
+                    </div>
+                    <button onclick="toggleTextEditor()" class="interactive-hover text-xs font-mono text-terracotta bg-terracotta/10 hover:bg-terracotta/20 px-3 py-2 rounded border border-terracotta/30">
+                        <i class="fa-solid fa-pen mr-1"></i> Editar Juegos
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <!-- PALIN CARD WITH ANIMATED CANVAS -->
+                    <div class="interactive-hover glass-card p-6 rounded-xl hover:-translate-y-2 transition-all duration-300 cursor-pointer border border-linen/10 relative group" onclick="openModal('palin')">
+                        <div class="h-44 rounded-lg bg-charcoal mb-5 relative overflow-hidden border border-linen/10 flex items-center justify-center">
+                            <canvas id="canvas-palin" width="280" height="170" class="w-full h-full"></canvas>
+                            <span class="absolute bottom-2 left-2 text-[10px] font-mono bg-terracotta text-linen px-2 py-0.5 rounded uppercase font-bold tracking-wider z-10">PALIN / CHUECA</span>
+                            <span class="absolute top-2 right-2 text-[10px] font-mono text-linen/40 group-hover:text-terracotta transition-colors z-10"><i class="fa-solid fa-play text-[8px] mr-1"></i>Animación</span>
+                        </div>
+                        <h3 class="font-serif text-2xl font-semibold mb-2 text-linen" id="disp-palin-title">Palin</h3>
+                        <p class="text-xs text-linen/70 leading-relaxed mb-4 line-clamp-3" id="disp-palin-preview">
+                            El palin, conocido también como chueca, es uno de los juegos más representativos de la cultura mapuche. Se juega entre dos equipos que disputan la pali en el paliwe.
+                        </p>
+                        <div class="pt-3 border-t border-linen/10 flex justify-between items-center text-xs text-terracotta font-mono font-medium">
+                            <span>Explorar elementos e historia</span>
+                            <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                        </div>
+                    </div>
+
+                    <!-- LINAO CARD WITH ANIMATED CANVAS -->
+                    <div class="interactive-hover glass-card p-6 rounded-xl hover:-translate-y-2 transition-all duration-300 cursor-pointer border border-linen/10 relative group" onclick="openModal('linao')">
+                        <div class="h-44 rounded-lg bg-charcoal mb-5 relative overflow-hidden border border-linen/10 flex items-center justify-center">
+                            <canvas id="canvas-linao" width="280" height="170" class="w-full h-full"></canvas>
+                            <span class="absolute bottom-2 left-2 text-[10px] font-mono bg-terracotta text-linen px-2 py-0.5 rounded uppercase font-bold tracking-wider z-10">LINAO</span>
+                            <span class="absolute top-2 right-2 text-[10px] font-mono text-linen/40 group-hover:text-terracotta transition-colors z-10"><i class="fa-solid fa-play text-[8px] mr-1"></i>Animación</span>
+                        </div>
+                        <h3 class="font-serif text-2xl font-semibold mb-2 text-linen" id="disp-linao-title">Linao</h3>
+                        <p class="text-xs text-linen/70 leading-relaxed mb-4 line-clamp-3" id="disp-linao-preview">
+                            Juego de pelota de manos de origen mapuche donde un equipo debe llevar la pelota al extremo contrario resistiendo el empuje físico rival.
+                        </p>
+                        <div class="pt-3 border-t border-linen/10 flex justify-between items-center text-xs text-terracotta font-mono font-medium">
+                            <span>Ver dinámica física y trabajo en equipo</span>
+                            <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                        </div>
+                    </div>
+
+                    <!-- COMIKAN CARD WITH ANIMATED CANVAS -->
+                    <div class="interactive-hover glass-card p-6 rounded-xl hover:-translate-y-2 transition-all duration-300 cursor-pointer border border-linen/10 relative group" onclick="openModal('comikan')">
+                        <div class="h-44 rounded-lg bg-charcoal mb-5 relative overflow-hidden border border-linen/10 flex items-center justify-center">
+                            <canvas id="canvas-comikan" width="280" height="170" class="w-full h-full"></canvas>
+                            <span class="absolute bottom-2 left-2 text-[10px] font-mono bg-terracotta text-linen px-2 py-0.5 rounded uppercase font-bold tracking-wider z-10">COMIKAN</span>
+                            <span class="absolute top-2 right-2 text-[10px] font-mono text-linen/40 group-hover:text-terracotta transition-colors z-10"><i class="fa-solid fa-play text-[8px] mr-1"></i>Animación</span>
+                        </div>
+                        <h3 class="font-serif text-2xl font-semibold mb-2 text-linen" id="disp-comikan-title">Comikan</h3>
+                        <p class="text-xs text-linen/70 leading-relaxed mb-4 line-clamp-3" id="disp-comikan-preview">
+                            Juego de tablero y estrategia ancestral mapuche que recrea la relación táctica entre el puma (komikan) y las piezas de defensa.
+                        </p>
+                        <div class="pt-3 border-t border-linen/10 flex justify-between items-center text-xs text-terracotta font-mono font-medium">
+                            <span>Ver tablero y estrategia</span>
+                            <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECCIÓN 3: BITÁCORA Y GALERÍA RITOQUE -->
+            <section id="section-ritoque" class="min-h-screen flex flex-col justify-center px-6 sm:px-12 md:px-24 py-24 max-w-5xl mx-auto">
+                <div class="glass-card p-8 sm:p-12 rounded-2xl border-l-4 border-l-terracotta relative">
+                    <button onclick="toggleTextEditor()" class="interactive-hover absolute top-4 right-4 text-xs font-mono text-terracotta bg-terracotta/10 hover:bg-terracotta/20 px-3 py-1 rounded border border-terracotta/30">
+                        <i class="fa-solid fa-pen mr-1"></i> Editar
+                    </button>
+                    <span class="text-terracotta font-mono text-xs tracking-widest uppercase mb-2 block">Capítulo 03 / Bitácora Territorial</span>
+                    <h2 class="font-serif text-3xl sm:text-5xl font-bold mb-6 text-linen" id="disp-ritoque-title">Experiencia en Ritoque</h2>
+                    <p class="text-sm sm:text-base text-linen/80 leading-relaxed mb-6" id="disp-ritoque-desc">
+                        Las dunas de Ritoque y la Ciudad Abierta actuaron como la gran cancha viva. Sobre el piso blando y mutable de la arena, el peso, el tiro y la velocidad del juego cobraron una nueva dimensión corporal.
+                    </p>
+
+                    <!-- Interactive Local Image Gallery Loader -->
+                    <div class="my-8">
+                        <div id="photo-container" class="relative h-64 sm:h-96 w-full rounded-xl bg-charcoal/90 border-2 border-dashed border-linen/20 flex flex-col items-center justify-center text-center p-6 overflow-hidden">
+                            <div id="upload-placeholder" class="flex flex-col items-center">
+                                <i class="fa-solid fa-camera-retro text-4xl text-terracotta mb-3"></i>
+                                <p class="text-sm font-semibold text-linen">Bitácora Fotográfica del Viaje</p>
+                                <p class="text-xs text-linen/50 mt-1 max-w-xs">Carga fotos de tus registros en las dunas de Ritoque.</p>
+                                
+                                <label class="interactive-hover mt-4 bg-terracotta hover:bg-clay text-linen px-5 py-2.5 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center space-x-2">
+                                    <i class="fa-solid fa-upload"></i>
+                                    <span>Subir Foto del Viaje</span>
+                                    <input type="file" id="image-input" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                                </label>
+                            </div>
+                            
+                            <img id="uploaded-image" class="absolute inset-0 w-full h-full object-cover hidden" alt="Fotografía de Ritoque">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECCIÓN 4: TESTIMONIOS Y TRABAJOS DE ALUMNOS (4 ALUMNOS) -->
+            <section id="section-alumnos" class="min-h-screen flex flex-col justify-center px-6 sm:px-12 md:px-24 py-24 max-w-6xl mx-auto">
+                <div class="glass-card p-8 sm:p-12 rounded-2xl mb-10 border-r-4 border-r-terracotta relative">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <span class="text-terracotta font-mono text-xs tracking-widest uppercase mb-1 block">Capítulo 04 / Voces del Taller</span>
+                            <h2 class="font-serif text-3xl sm:text-5xl font-bold text-linen">Testimonios y Trabajos de Estudiantes</h2>
+                        </div>
+                        <button onclick="openStudentFormModal()" class="interactive-hover bg-terracotta hover:bg-clay text-linen px-4 py-2.5 rounded-lg text-xs font-mono font-semibold transition-all flex items-center space-x-2 shadow-lg">
+                            <i class="fa-solid fa-plus-circle"></i>
+                            <span>Agregar Registro</span>
+                        </button>
+                    </div>
+                    <p class="text-sm sm:text-base text-linen/80 leading-relaxed mt-4 font-light">
+                        Espacio dedicado a reunir los testimonios, registros gráficos y reflexiones de las y los estudiantes participantes durante el desarrollo de la experiencia en Ritoque.
+                    </p>
+                </div>
+
+                <!-- GRID DE 4 TARJETAS DE ALUMNOS -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="student-cards-container">
+                    <!-- Dinámicamente renderizado desde JS -->
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- STUDENT PROJECT DETAIL MODAL -->
+    <div id="student-detail-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-card max-w-2xl w-full p-6 sm:p-8 rounded-2xl relative border border-linen/20 max-h-[90vh] overflow-y-auto">
+            <button onclick="closeStudentDetail()" class="interactive-hover absolute top-4 right-4 text-linen/60 hover:text-linen text-xl p-2">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <span id="stud-modal-role" class="text-xs font-mono text-terracotta tracking-widest uppercase mb-1 block">Estudiante eAD</span>
+            <h3 id="stud-modal-name" class="font-serif text-3xl font-bold text-linen mb-1">Nombre Alumno</h3>
+            <p id="stud-modal-project" class="text-xs font-mono text-clay uppercase tracking-wider mb-6">Registro del Taller</p>
+
+            <div class="space-y-4 text-sm text-linen/90 leading-relaxed">
+                <div class="p-4 bg-charcoal/80 rounded-xl border border-linen/10 border-l-2 border-l-terracotta">
+                    <span class="text-xs font-mono text-terracotta uppercase font-bold block mb-1">Testimonio de la Experiencia:</span>
+                    <p id="stud-modal-quote" class="italic font-light">"..."</p>
+                </div>
+
+                <div>
+                    <h4 class="font-serif text-lg font-semibold text-linen mb-2">Desarrollo y Observación en Ritoque</h4>
+                    <p id="stud-modal-body" class="text-xs text-linen/80 leading-relaxed font-light">
+                        Espacio disponible para adjuntar reflexiones, láminas y registros adicionales de la actividad.
+                    </p>
+                </div>
+
+                <!-- PROJECT IMAGE DISPLAY -->
+                <div id="stud-modal-img-container" class="my-4 rounded-xl overflow-hidden border border-linen/20 bg-charcoal h-56 flex items-center justify-center relative">
+                    <img id="stud-modal-img" src="" alt="Trabajo del Alumno" class="w-full h-full object-cover hidden">
+                    <div id="stud-modal-placeholder" class="text-center p-4 text-xs font-mono text-linen/40 flex flex-col items-center">
+                        <i class="fa-solid fa-compass-drafting text-3xl text-terracotta mb-2"></i>
+                        <span>Registro de croquis y láminas de taller</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STUDENT FORM SUBMISSION MODAL -->
+    <div id="student-form-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-card max-w-xl w-full p-6 sm:p-8 rounded-2xl relative border border-linen/20 max-h-[90vh] overflow-y-auto">
+            <button onclick="closeStudentFormModal()" class="interactive-hover absolute top-4 right-4 text-linen/60 hover:text-linen text-xl p-2">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <span class="text-xs font-mono text-terracotta tracking-widest uppercase mb-1 block"><i class="fa-solid fa-feather mr-1"></i> Participación Estudiantil</span>
+            <h3 class="font-serif text-2xl font-bold text-linen mb-6">Agregar mi Registro al Taller</h3>
+
+            <form onsubmit="handleStudentSubmission(event)" class="space-y-4 text-xs font-mono">
+                <div>
+                    <label class="text-linen/80 block mb-1">Nombre Completo:</label>
+                    <input type="text" id="input-stud-name" required placeholder="Ej: Florencia Valdivia" class="w-full bg-darkbg border border-linen/20 rounded p-2.5 text-linen text-sm focus:border-terracotta outline-none">
+                </div>
+                <div>
+                    <label class="text-linen/80 block mb-1">Carrera / Rol:</label>
+                    <input type="text" id="input-stud-role" required placeholder="Ej: Estudiante Diseño eAD" class="w-full bg-darkbg border border-linen/20 rounded p-2.5 text-linen text-sm focus:border-terracotta outline-none">
+                </div>
+                <div>
+                    <label class="text-linen/80 block mb-1">Título del Trabajo o Registro:</label>
+                    <input type="text" id="input-stud-project" placeholder="Ej: Bitácora del Trazo en el Palin" class="w-full bg-darkbg border border-linen/20 rounded p-2.5 text-linen text-sm focus:border-terracotta outline-none">
+                </div>
+                <div>
+                    <label class="text-linen/80 block mb-1">Testimonio / Reflexión:</label>
+                    <textarea id="input-stud-quote" rows="3" placeholder="Escribe aquí tu experiencia..." class="w-full bg-darkbg border border-linen/20 rounded p-2.5 text-linen text-sm focus:border-terracotta outline-none"></textarea>
+                </div>
+                <div>
+                    <label class="text-linen/80 block mb-1">Subir Foto o Croquis (Opcional):</label>
+                    <input type="file" id="input-stud-file" accept="image/*" class="w-full text-linen/70 text-xs">
+                </div>
+
+                <div class="pt-4 flex justify-end space-x-3">
+                    <button type="button" onclick="closeStudentFormModal()" class="px-4 py-2 bg-linen/10 hover:bg-linen/20 text-linen rounded font-semibold">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-terracotta hover:bg-clay text-linen rounded font-semibold flex items-center space-x-1">
+                        <i class="fa-solid fa-paper-plane mr-1"></i> Publicar Registro
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- FLOATING QUICK TEXT EDITOR PANEL MODAL -->
+    <div id="editor-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-card max-w-2xl w-full p-6 sm:p-8 rounded-2xl relative border border-linen/20 max-h-[90vh] overflow-y-auto">
+            <button onclick="toggleTextEditor()" class="interactive-hover absolute top-4 right-4 text-linen/60 hover:text-linen text-xl p-2">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <span class="text-xs font-mono text-terracotta tracking-widest uppercase mb-1 block"><i class="fa-solid fa-pen-to-square mr-1"></i> Editor de Contenidos</span>
+            <h3 class="font-serif text-2xl font-bold text-linen mb-6">Personalizar Textos y Relatos</h3>
+
+            <div class="space-y-5 text-xs font-mono">
+                <!-- HERO FIELDS -->
+                <div class="p-4 bg-charcoal/80 rounded-lg border border-linen/10 space-y-3">
+                    <span class="text-terracotta font-bold uppercase block">Portada / Hero</span>
+                    <div>
+                        <label class="text-linen/70 block mb-1">Título Principal:</label>
+                        <input type="text" id="edit-hero-title" class="w-full bg-darkbg border border-linen/20 rounded p-2 text-linen text-sm focus:border-terracotta outline-none">
+                    </div>
+                    <div>
+                        <label class="text-linen/70 block mb-1">Subtítulo / Institución:</label>
+                        <input type="text" id="edit-hero-subtitle" class="w-full bg-darkbg border border-linen/20 rounded p-2 text-linen text-sm focus:border-terracotta outline-none">
+                    </div>
+                    <div>
+                        <label class="text-linen/70 block mb-1">Descripción General:</label>
+                        <textarea id="edit-hero-desc" rows="2" class="w-full bg-darkbg border border-linen/20 rounded p-2 text-linen text-sm focus:border-terracotta outline-none"></textarea>
+                    </div>
+                </div>
+
+                <!-- TALLER FIELDS -->
+                <div class="p-4 bg-charcoal/80 rounded-lg border border-linen/10 space-y-3">
+                    <span class="text-terracotta font-bold uppercase block">Sección El Taller</span>
+                    <div>
+                        <label class="text-linen/70 block mb-1">Título Sección:</label>
+                        <input type="text" id="edit-taller-title" class="w-full bg-darkbg border border-linen/20 rounded p-2 text-linen text-sm focus:border-terracotta outline-none">
+                    </div>
+                    <div>
+                        <label class="text-linen/70 block mb-1">Párrafo 1:</label>
+                        <textarea id="edit-taller-body1" rows="2" class="w-full bg-darkbg border border-linen/20 rounded p-2 text-linen text-sm focus:border-terracotta outline-none"></textarea>
+                    </div>
+                </div>
+
+                <!-- RITOQUE FIELDS -->
+                <div class="p-4 bg-charcoal/80 rounded-lg border border-linen/10 space-y-3">
+                    <span class="text-terracotta font-bold uppercase block">Sección Ritoque</span>
+                    <div>
+                        <label class="text-linen/70 block mb-1">Título Ritoque:</label>
+                        <input type="text" id="edit-ritoque-title" class="w-full bg-darkbg border border-linen/20 rounded p-2 text-linen text-sm focus:border-terracotta outline-none">
+                    </div>
+                    <div>
+                        <label class="text-linen/70 block mb-1">Bitácora Ritoque:</label>
+                        <textarea id="edit-ritoque-desc" rows="2" class="w-full bg-darkbg border border-linen/20 rounded p-2 text-linen text-sm focus:border-terracotta outline-none"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end space-x-3">
+                <button onclick="toggleTextEditor()" class="px-4 py-2 bg-linen/10 hover:bg-linen/20 text-linen rounded text-xs font-semibold">Cancelar</button>
+                <button onclick="saveTextChanges()" class="px-5 py-2 bg-terracotta hover:bg-clay text-linen rounded text-xs font-semibold flex items-center space-x-1">
+                    <i class="fa-solid fa-floppy-disk mr-1"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME DETAILS MODAL -->
+    <div id="game-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-card max-w-2xl w-full p-8 rounded-2xl relative border border-linen/20 max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal()" class="interactive-hover absolute top-4 right-4 text-linen/60 hover:text-linen text-xl p-2">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <span id="modal-tag" class="text-xs font-mono text-terracotta tracking-widest uppercase mb-1 block">Aükantun</span>
+            <h3 id="modal-title" class="font-serif text-3xl font-bold text-linen mb-6">Título del Juego</h3>
+            <div id="modal-description" class="text-sm text-linen/90 leading-relaxed space-y-4 mb-6">Descripción...</div>
+            <div id="modal-extra" class="bg-charcoal/90 p-4 rounded-xl text-xs font-mono text-linen/70 border border-linen/10 border-l-2 border-l-terracotta"></div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT SYSTEM ENGINE -->
+    <script>
+        /* --------------------------------------------------
+           1. CUSTOM INTERACTIVE CURSOR
+        -------------------------------------------------- */
+        const cursor = document.getElementById('custom-cursor');
+        const cursorDot = document.getElementById('custom-cursor-dot');
+
+        window.addEventListener('mousemove', (e) => {
+            if (cursor && cursorDot) {
+                cursor.style.left = `${e.clientX}px`;
+                cursor.style.top = `${e.clientY}px`;
+                cursorDot.style.left = `${e.clientX}px`;
+                cursorDot.style.top = `${e.clientY}px`;
+            }
+        });
+
+        document.querySelectorAll('.interactive-hover, button, a, input, textarea').forEach(el => {
+            el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
+            el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
+        });
+
+        /* --------------------------------------------------
+           2. GAME MODALS DATA & ENGINE
+        -------------------------------------------------- */
+        const gameModalData = {
+            palin: {
+                tag: 'Aükantun / Palin',
+                title: 'Palin (Chueca)',
+                description: `
+                    <p class="font-medium text-linen">El palin, conocido también como chueca, es uno de los juegos más representativos de la cultura mapuche. Se juega entre dos equipos que se disputan una pelota, y sus elementos tienen nombre propio:</p>
+                    <ul class="list-disc pl-5 space-y-2 mt-3 text-xs sm:text-sm text-linen/80">
+                        <li><strong class="text-clay">La chueca (wüño):</strong> El palo curvo con que se golpea y conduce la pelota.</li>
+                        <li><strong class="text-clay">La pali:</strong> La pelota, que debe llevarse hasta la zona contraria.</li>
+                        <li><strong class="text-clay">El paliwe:</strong> La cancha, un espacio largo y abierto que organiza el encuentro de los equipos.</li>
+                    </ul>
+                    <p class="mt-4 text-xs sm:text-sm text-linen/80">Más que un deporte, el palin es un acontecimiento colectivo: reúne a comunidades, se acompaña de ritos y festejos, y expresa valores como la fuerza, la solidaridad y el respeto entre quienes juegan.</p>
+                `,
+                extra: 'RECONOCIMIENTO: Declarado Deporte Nacional en Chile (2004) por su valor patrimonial y cultural.'
+            },
+            linao: {
+                tag: 'Aükantun / Linao',
+                title: 'Linao',
+                description: `
+                    <p class="font-medium text-linen">El linao es un juego de pelota de manos de origen mapuche. Un equipo debe llevar la pelota de un extremo de la cancha al otro, mientras el equipo contrario intenta impedirlo, una dinámica que suele compararse con el rugby.</p>
+                    <p class="mt-3 text-xs sm:text-sm text-linen/80">En el cuerpo se nota mucho el contacto, el agarre y el empuje, por eso es un juego muy físico.</p>
+                    <p class="mt-3 text-xs sm:text-sm text-linen/80">Pero el linao también depende del trabajo en equipo. Una persona que jugó la actividad explicó que, para armar bien la jugada, hay que conocerse entre todos. Jugarlo es, en parte, aprender a coordinarse con otros.</p>
+                    <p class="mt-3 text-xs sm:text-sm text-linen/80">Hoy el linao sigue vivo en encuentros y actividades de revalorización cultural. Tanto el linao como el palin fueron reconocidos como deportes nacionales en 2004. Además, se practica en jornadas organizadas desde las propias comunidades, junto con el palin y el pilmatun.</p>
+                `,
+                extra: 'CULTURA Y CUERPO: Exige máxima resistencia física y sincronización táctica comunitaria sobre terrenos vivos.'
+            },
+            comikan: {
+                tag: 'Aükantun / Comikan',
+                title: 'Comikan',
+                description: `
+                    <p class="font-medium text-linen">El Comikan (o Komikan) es un juego tradicional de estrategia y tablero de origen ancestral mapuche.</p>
+                    <p class="mt-3 text-xs sm:text-sm text-linen/80">Recrea de forma táctica la relación de caza entre un puma (komikan) y doce perros o piezas de defensa. Se juega trazando líneas en la tierra o sobre tableros de madera utilizando conchas, piedras o semillas como fichas.</p>
+                    <p class="mt-3 text-xs sm:text-sm text-linen/80">El objetivo del puma es capturar a las fichas contrarias, mientras que las fichas defensoras intentan acorralar al puma bloqueando todos sus movimientos posibles.</p>
+                `,
+                extra: 'ESTRATEGIA ANCESTRAL: Refleja la aguda observación mapuche de la fauna, el territorio y la agilidad intelectual.'
+            }
+        };
+
+        function openModal(gameKey) {
+            const data = gameModalData[gameKey];
+            if (!data) return;
+
+            document.getElementById('modal-tag').innerText = data.tag;
+            document.getElementById('modal-title').innerText = data.title;
+            document.getElementById('modal-description').innerHTML = data.description;
+            document.getElementById('modal-extra').innerText = data.extra;
+
+            const modal = document.getElementById('game-modal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.classList.add('opacity-100', 'pointer-events-auto');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('game-modal');
+            modal.classList.remove('opacity-100', 'pointer-events-auto');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        /* --------------------------------------------------
+           3. TEXT EDITOR CONTROLLER
+        -------------------------------------------------- */
+        function toggleTextEditor() {
+            const modal = document.getElementById('editor-modal');
+            if (!modal) return;
+            const isHidden = modal.classList.contains('opacity-0');
+            
+            if (isHidden) {
+                document.getElementById('edit-hero-title').value = document.getElementById('disp-hero-title').innerText;
+                document.getElementById('edit-hero-subtitle').value = document.getElementById('disp-hero-subtitle').innerText;
+                document.getElementById('edit-hero-desc').value = document.getElementById('disp-hero-desc').innerText;
+                
+                document.getElementById('edit-taller-title').value = document.getElementById('disp-taller-title').innerText;
+                document.getElementById('edit-taller-body1').value = document.getElementById('disp-taller-body1').innerText;
+                
+                document.getElementById('edit-ritoque-title').value = document.getElementById('disp-ritoque-title').innerText;
+                document.getElementById('edit-ritoque-desc').value = document.getElementById('disp-ritoque-desc').innerText;
+
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                modal.classList.add('opacity-100', 'pointer-events-auto');
+            } else {
+                modal.classList.remove('opacity-100', 'pointer-events-auto');
+                modal.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+
+        function saveTextChanges() {
+            document.getElementById('disp-hero-title').innerText = document.getElementById('edit-hero-title').value;
+            document.getElementById('disp-hero-subtitle').innerText = document.getElementById('edit-hero-subtitle').value;
+            document.getElementById('disp-hero-desc').innerText = document.getElementById('edit-hero-desc').value;
+
+            document.getElementById('disp-taller-title').innerText = document.getElementById('edit-taller-title').value;
+            document.getElementById('disp-taller-body1').innerText = document.getElementById('edit-taller-body1').value;
+
+            document.getElementById('disp-ritoque-title').innerText = document.getElementById('edit-ritoque-title').value;
+            document.getElementById('disp-ritoque-desc').innerText = document.getElementById('edit-ritoque-desc').value;
+
+            toggleTextEditor();
+        }
+
+        /* --------------------------------------------------
+           4. IMAGE UPLOAD & GALLERY HANDLER
+        -------------------------------------------------- */
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    const img = document.getElementById('uploaded-image');
+                    const placeholder = document.getElementById('upload-placeholder');
+                    img.src = evt.target.result;
+                    img.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        /* --------------------------------------------------
+           5. VINYL / REWE DISK DRAG & ROTATION SYSTEM
+        -------------------------------------------------- */
+        const vinylWrapper = document.getElementById('vinyl-wrapper');
+        const vinyl = document.getElementById('vinyl');
+        let currentRotation = 0;
+        let isDragging = false;
+        let startX = 0;
+
+        if (vinylWrapper) {
+            vinylWrapper.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - startX;
+                currentRotation += deltaX * 0.5;
+                startX = e.clientX;
+                if (vinyl) vinyl.style.transform = `rotate(${currentRotation}deg)`;
+            });
+
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            window.addEventListener('scroll', () => {
+                if (!isDragging) {
+                    currentRotation = window.scrollY * 0.2;
+                    if (vinyl) vinyl.style.transform = `rotate(${currentRotation}deg)`;
+                }
+            });
+        }
+
+        /* --------------------------------------------------
+           6. ANIMATED GAME CARDS CANVAS (PALIN, LINAO, COMIKAN)
+        -------------------------------------------------- */
+        function initCardCanvases() {
+            // Palin Animation Canvas
+            const cPalin = document.getElementById('canvas-palin');
+            if (cPalin) {
+                const ctx = cPalin.getContext('2d');
+                let t = 0;
+                function drawPalin() {
+                    ctx.clearRect(0, 0, cPalin.width, cPalin.height);
+                    ctx.strokeStyle = '#8c2d19';
+                    ctx.lineWidth = 3;
+                    
+                    // Wüño curve
+                    ctx.beginPath();
+                    ctx.moveTo(40, 130);
+                    ctx.quadraticCurveTo(120 + Math.sin(t) * 10, 80, 200, 40);
+                    ctx.stroke();
+
+                    // Pali ball
+                    const ballX = 140 + Math.cos(t * 1.5) * 40;
+                    const ballY = 100 + Math.sin(t * 1.5) * 15;
+                    ctx.fillStyle = '#e6d7c3';
+                    ctx.beginPath();
+                    ctx.arc(ballX, ballY, 8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    t += 0.04;
+                    requestAnimationFrame(drawPalin);
+                }
+                drawPalin();
+            }
+
+            // Linao Animation Canvas
+            const cLinao = document.getElementById('canvas-linao');
+            if (cLinao) {
+                const ctx = cLinao.getContext('2d');
+                let t = 0;
+                function drawLinao() {
+                    ctx.clearRect(0, 0, cLinao.width, cLinao.height);
+                    ctx.fillStyle = '#d97736';
+                    
+                    // Players pushing
+                    const p1 = 100 + Math.sin(t) * 15;
+                    const p2 = 180 - Math.sin(t) * 15;
+                    
+                    ctx.beginPath(); ctx.arc(p1, 85, 14, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#8c2d19';
+                    ctx.beginPath(); ctx.arc(p2, 85, 14, 0, Math.PI * 2); ctx.fill();
+
+                    // Central Linao Ball
+                    ctx.fillStyle = '#e6d7c3';
+                    ctx.beginPath(); ctx.arc((p1 + p2) / 2, 85, 7, 0, Math.PI * 2); ctx.fill();
+
+                    t += 0.03;
+                    requestAnimationFrame(drawLinao);
+                }
+                drawLinao();
+            }
+
+            // Comikan Animation Canvas
+            const cComikan = document.getElementById('canvas-comikan');
+            if (cComikan) {
+                const ctx = cComikan.getContext('2d');
+                let t = 0;
+                function drawComikan() {
+                    ctx.clearRect(0, 0, cComikan.width, cComikan.height);
+                    
+                    // Board grid
+                    ctx.strokeStyle = '#e6d7c3';
+                    ctx.globalAlpha = 0.2;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    for(let i = 40; i < 280; i += 40) {
+                        ctx.moveTo(i, 20); ctx.lineTo(i, 150);
+                    }
+                    for(let j = 20; j < 160; j += 30) {
+                        ctx.moveTo(40, j); ctx.lineTo(240, j);
+                    }
+                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+
+                    // Puma Piece
+                    const pumaX = 140 + Math.cos(t) * 30;
+                    const pumaY = 85 + Math.sin(t) * 20;
+                    ctx.fillStyle = '#d97736';
+                    ctx.beginPath(); ctx.arc(pumaX, pumaY, 9, 0, Math.PI * 2); ctx.fill();
+
+                    t += 0.02;
+                    requestAnimationFrame(drawComikan);
+                }
+                drawComikan();
+            }
+        }
+
+        /* --------------------------------------------------
+           7. SAND CANVAS BACKGROUND
+        -------------------------------------------------- */
+        function initSandCanvas() {
+            const canvas = document.getElementById('sand-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            const particles = Array.from({ length: 65 }, () => ({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: Math.random() * 1.8 + 0.5,
+                speedX: Math.random() * 0.4 + 0.1,
+                speedY: Math.random() * 0.2 - 0.1,
+                alpha: Math.random() * 0.5 + 0.2
+            }));
+
+            function animateSand() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => {
+                    ctx.fillStyle = `rgba(230, 215, 195, ${p.alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    p.x += p.speedX;
+                    p.y += p.speedY;
+
+                    if (p.x > canvas.width) p.x = 0;
+                    if (p.y > canvas.height || p.y < 0) p.y = Math.random() * canvas.height;
+                });
+                requestAnimationFrame(animateSand);
+            }
+            animateSand();
+        }
+
+        /* --------------------------------------------------
+           8. AUDIO SYNTHESIZER ENGINE
+        -------------------------------------------------- */
+        let audioCtx = null;
+        let isPlaying = false;
+
+        document.getElementById('audio-toggle').addEventListener('click', () => {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            isPlaying = !isPlaying;
+            const icon = document.getElementById('audio-icon');
+            const text = document.getElementById('audio-text');
+
+            if (isPlaying) {
+                icon.className = 'fa-solid fa-pause';
+                text.innerText = 'Pausar Audio';
+                startSynthSoundscape();
+            } else {
+                icon.className = 'fa-solid fa-play';
+                text.innerText = 'Sintetizar Audio';
+                if (audioCtx) audioCtx.suspend();
+            }
+        });
+
+        function startSynthSoundscape() {
+            // Wind noise generator
+            const bufferSize = audioCtx.sampleRate * 2;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+
+            const whiteNoise = audioCtx.createBufferSource();
+            whiteNoise.buffer = noiseBuffer;
+            whiteNoise.loop = true;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 350;
+
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0.08;
+
+            whiteNoise.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            whiteNoise.start();
+        }
+
+        /* --------------------------------------------------
+           9. STUDENT TESTIMONIALS (EXACTLY 4 STUDENTS)
+        -------------------------------------------------- */
+        const studentsData = [
+            {
+                name: 'Florencia Valdivia',
+                role: 'Estudiante Diseño eAD',
+                project: 'Registro del Taller',
+                quote: 'Espacio disponible para agregar la reflexión sobre la experiencia en Ritoque.',
+                body: 'Documentación e impresiones de la travesía en desarrollo.',
+                img: null
+            },
+            {
+                name: 'Enzo Vignolo',
+                role: 'Estudiante Diseño eAD',
+                project: 'Registro del Taller',
+                quote: 'Espacio disponible para agregar la reflexión sobre la experiencia en Ritoque.',
+                body: 'Documentación e impresiones de la travesía en desarrollo.',
+                img: null
+            },
+            {
+                name: 'Martina Venegas',
+                role: 'Estudiante Diseño eAD',
+                project: 'Registro del Taller',
+                quote: 'Espacio disponible para agregar la reflexión sobre la experiencia en Ritoque.',
+                body: 'Documentación e impresiones de la travesía en desarrollo.',
+                img: null
+            },
+            {
+                name: 'Isidora Fernández',
+                role: 'Estudiante Diseño eAD',
+                project: 'Registro del Taller',
+                quote: 'Espacio disponible para agregar la reflexión sobre la experiencia en Ritoque.',
+                body: 'Documentación e impresiones de la travesía en desarrollo.',
+                img: null
+            }
+        ];
+
+        function openStudentDetail(index) {
+            const data = studentsData[index];
+            if (!data) return;
+
+            document.getElementById('stud-modal-name').textContent = data.name;
+            document.getElementById('stud-modal-role').textContent = data.role;
+            document.getElementById('stud-modal-project').textContent = data.project;
+            document.getElementById('stud-modal-quote').textContent = `"${data.quote}"`;
+            document.getElementById('stud-modal-body').textContent = data.body;
+
+            const imgEl = document.getElementById('stud-modal-img');
+            const placeholderEl = document.getElementById('stud-modal-placeholder');
+
+            if (data.img) {
+                imgEl.src = data.img;
+                imgEl.classList.remove('hidden');
+                placeholderEl.classList.add('hidden');
+            } else {
+                imgEl.classList.add('hidden');
+                placeholderEl.classList.remove('hidden');
+            }
+
+            const modal = document.getElementById('student-detail-modal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.classList.add('opacity-100', 'pointer-events-auto');
+        }
+
+        function closeStudentDetail() {
+            const modal = document.getElementById('student-detail-modal');
+            modal.classList.remove('opacity-100', 'pointer-events-auto');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function openStudentFormModal() {
+            const modal = document.getElementById('student-form-modal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.classList.add('opacity-100', 'pointer-events-auto');
+        }
+
+        function closeStudentFormModal() {
+            const modal = document.getElementById('student-form-modal');
+            modal.classList.remove('opacity-100', 'pointer-events-auto');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function handleStudentSubmission(e) {
+            e.preventDefault();
+            const name = document.getElementById('input-stud-name').value;
+            const role = document.getElementById('input-stud-role').value;
+            const project = document.getElementById('input-stud-project').value || 'Registro del Taller';
+            const quote = document.getElementById('input-stud-quote').value || 'Sin testimonio registrado aún.';
+            const fileInput = document.getElementById('input-stud-file');
+
+            const processAndAdd = (imgUrl) => {
+                const newStudent = {
+                    name,
+                    role,
+                    project,
+                    quote,
+                    body: `Aporte de ${name} registrado en la plataforma.`,
+                    img: imgUrl
+                };
+
+                studentsData.unshift(newStudent);
+                renderStudentCards();
+                closeStudentFormModal();
+            };
+
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    processAndAdd(evt.target.result);
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                processAndAdd(null);
+            }
+        }
+
+        function renderStudentCards() {
+            const container = document.getElementById('student-cards-container');
+            if (!container) return;
+
+            container.innerHTML = studentsData.map((st, idx) => `
+                <div class="interactive-hover glass-card p-6 rounded-xl hover:-translate-y-2 transition-all duration-300 border border-linen/10 relative flex flex-col justify-between group cursor-pointer" onclick="openStudentDetail(${idx})">
+                    <div>
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="w-12 h-12 rounded-full bg-terracotta/30 border border-terracotta flex items-center justify-center text-terracotta font-serif font-bold text-lg">
+                                ${st.name.charAt(0)}
+                            </div>
+                            <div>
+                                <h3 class="font-serif font-semibold text-linen text-lg" id="disp-student-name-${idx}">${st.name}</h3>
+                                <span class="text-[11px] font-mono text-linen/60 block" id="disp-student-role-${idx}">${st.role}</span>
+                            </div>
+                        </div>
+                        <span class="inline-block text-[10px] font-mono bg-terracotta/20 text-clay border border-terracotta/30 px-2.5 py-0.5 rounded uppercase tracking-wider mb-3" id="disp-student-project-${idx}">${st.project}</span>
+                        <p class="text-xs text-linen/80 italic leading-relaxed mb-4 line-clamp-3" id="disp-student-quote-${idx}">
+                            "${st.quote}"
+                        </p>
+                    </div>
+                    <div class="pt-3 border-t border-linen/10 flex justify-between items-center text-xs text-terracotta font-mono font-medium">
+                        <span>Ver Registro</span>
+                        <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        /* --------------------------------------------------
+           10. INITIALIZATION ON PAGE LOAD
+        -------------------------------------------------- */
+        window.addEventListener('DOMContentLoaded', () => {
+            initSandCanvas();
+            initCardCanvases();
+            renderStudentCards();
+        });
+    </script>
+</body>
+</html>
